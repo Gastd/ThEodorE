@@ -123,6 +123,12 @@ class HlsGenerator extends AbstractGenerator {
 	var generate = false
 
 	var space = '\t'
+	
+	def Requirement simpleMutation(Requirement req) {
+//		requirement : resource.allContents.toIterable.filter(Requirement)
+		req.spec.expression
+		return mutationVisitor(req.spec.expression);
+	}
 
 	def double getNumber(Expression expression) {
 		var double rate
@@ -179,6 +185,605 @@ class HlsGenerator extends AbstractGenerator {
 
 		return time
 	}
+
+	def Expression mutationVisitor(Expression expression) {
+		var newExpr = null
+		var text = ''
+		switch (expression) {
+			And: {
+				val left = mutationVisitor(expression.left)
+				val right = mutationVisitor(expression.right)
+//				val op = Or(expression)
+//				var newExpr = new Expression()
+//				expression.setOp("Or")
+//				newExpr = ((Or)expression)
+//				newExpr.left = left
+//				newExpr.right = right
+//				val person = new Or => [
+//			    	left = left
+//			    	right = right
+//			    ]
+//				text += op + "(" + left + ", " + right + ")"
+			}
+			Or: {
+				val left = mutationVisitor(expression.left)
+				val right = mutationVisitor(expression.right)
+				val op = expression.op
+				text += op + "(" + left + ", " + right + ")"
+			}
+			Neg: {
+				val value = mutationVisitor(expression.neg)
+				text += "Not(" + value + ')'
+			}
+			Implication: {
+				val left = mutationVisitor(expression.left)
+				val right = mutationVisitor(expression.right)
+				text += "Implies(" + left + ", " + right + ")"
+			}
+			TimeQuantifier: {
+				val op = expression.op as String
+				var String connector
+				if (op == 'ForAll') {
+					connector = 'Implies'
+				}
+				if (op == 'Exists') {
+					connector = 'And'
+				}
+				var function = expression.function.name as String
+
+				if (expression.lower !== null && expression.upper !== null && expression.bracketup !== null &&
+					expression.bracketdown !== null) {
+					var down = arithmethicRecursion2(expression.lower)
+					var up = arithmethicRecursion2(expression.upper)
+					var bracketup = expression.bracketup
+					var bracketdown = expression.bracketdown
+
+					var major = "";
+					var minor = "";
+
+					if (bracketdown == "(") {
+						minor = "<"
+					} else {
+						minor = "<="
+					}
+					if (bracketup == ")") {
+						major = ">"
+					} else {
+						major = ">="
+					}
+
+					var interval = 'And(' + down + minor + function + ', ' + function + minor + up + ')'
+					var String intervalDefinition = '\n' + space + 'interval_' + function + '=' + interval
+					saveIntervals(intervalDefinition)
+				}
+
+				if (expression.suchthat !== null) {
+					var conditions = expression.suchthat
+					saveConditions(conditions, function)
+
+				}
+
+				text +=
+					op + '([' + function + '], ' + connector + '(interval_' + function + ', conditions_' + function +
+						'))'
+			}
+			SampleQuantifier: {
+				val op = expression.op as String
+				var String connector
+				if (op == 'ForAll') {
+					connector = 'Implies'
+				}
+				if (op == 'Exists') {
+					connector = 'And'
+				}
+				var samplevariable = expression.function.name as String
+
+				if (expression.lower !== null && expression.upper !== null && expression.bracketup !== null &&
+					expression.bracketdown !== null) {
+					var lowerBound = arithmethicRecursion2(expression.lower)
+					var upperBound = arithmethicRecursion2(expression.upper)
+					var bracketup = expression.bracketup
+					var bracketdown = expression.bracketdown
+
+					var major = "";
+					var minor = "";
+
+					if (bracketdown == "(") {
+						minor = "<"
+					} else {
+						minor = "<="
+					}
+					if (bracketup == ")") {
+						major = ">"
+					} else {
+						major = ">="
+					}
+
+					var interval = 'And(' + samplevariable + major + lowerBound + ', ' + samplevariable + minor +
+						upperBound + ')'
+					var String intervalDefinition = '\n' + space + 'interval_' + samplevariable + '=' + interval
+					saveIntervals(intervalDefinition)
+				}
+
+				if (expression.suchthat !== null) {
+					var conditions = expression.suchthat
+					saveConditions(conditions, samplevariable)
+				}
+
+				text +=
+					op + '([' + samplevariable + '], ' + connector + '(interval_' + samplevariable + ', conditions_' +
+						samplevariable + '))'
+			}
+			VariableQuantifier: {
+				val op = expression.op as String
+				var String connector
+				if (op == 'ForAll') {
+					connector = 'Implies'
+				}
+				if (op == 'Exists') {
+					connector = 'And'
+				}
+				var function = expression.function.name as String;
+
+				if (expression.lower !== null && expression.upper !== null && expression.bracketup !== null &&
+					expression.bracketdown !== null) {
+					var down = arithmethicRecursion2(expression.lower)
+					var up = arithmethicRecursion2(expression.upper)
+					var bracketup = expression.bracketup
+					var bracketdown = expression.bracketdown
+
+					var major = "";
+					var minor = "";
+
+					if (bracketdown == "(") {
+						minor = "<"
+					} else {
+						minor = "<="
+					}
+					if (bracketup == ")") {
+						major = ">"
+					} else {
+						major = ">="
+					}
+
+					var interval = 'And(' + function + minor + up + ', ' + function + major + down + ')'
+					var String intervalDefinition = '\n' + space + 'interval_' + function + '=' + interval
+					saveIntervals(intervalDefinition)
+					var conditions = expression.suchthat
+					saveConditions(conditions, function)
+					text +=
+					op + '([' + function + '], ' + connector + '(interval_' + function + ', conditions_' + function +
+						'))'
+
+
+				}
+				else {
+					var conditions = expression.suchthat
+					saveConditions(conditions, function)
+					text +=
+					op + '([' + function + '], ' +  'conditions_'  + function + ')'
+
+				}
+
+
+			}
+			TermRelation: {
+				val op = expression.op as String
+				text += arithmethicRecursion2(expression.left) + op + arithmethicRecursion2(expression.right)
+			}
+			Overshoot: {
+				val signal = arithmethicRecursion2(expression.function)
+				val mon = expression.mon
+				var bracketup = expression.bracketup
+				var bracketdown = expression.bracketdown
+
+				var major = "";
+				var minor = "";
+
+				if (bracketdown == "(") {
+					minor = "<"
+				} else {
+					minor = "<="
+				}
+				if (bracketup == ")") {
+					major = ">"
+				} else {
+					major = ">="
+				}
+				var tl = arithmethicRecursion2(expression.lowertime)
+				var tu = arithmethicRecursion2(expression.uppertime)
+
+				val value1 = arithmethicRecursion2(expression.value1);
+
+				val value2 = arithmethicRecursion2(expression.value2);
+
+				var t = "t_Overshoot_" + overshootquantcournter;
+				var t1 = "t1_Overshoot_" + overshootquantcournter;
+
+				definitions +=
+					'\n' + space + "t_Overshoot_" + overshootquantcournter + "=Real('t_Overshoot_" +
+						overshootquantcournter + "') ";
+				definitions +=
+					'\n' + space + "t1_Overshoot_" + overshootquantcournter + "=Real('t1_Overshoot_" +
+						overshootquantcournter + "') ";
+
+				var interval_t_def = 'And(' + t + major + tl + ', ' + t + minor + tu + ')'
+				var interval_t_id = 'interval_' + t;
+
+				var String interval_t_Def = '\n' + space + interval_t_id + '=' + interval_t_def;
+
+				saveIntervals(interval_t_Def)
+
+				var interval_t1_def = 'And(' + t1 + major + t + ', ' + t1 + minor + tu + ')'
+				var interval_t1_id = 'interval_' + t1;
+
+				var String interval_t1_Def = '\n' + space + interval_t1_id + '=' + interval_t1_def;
+
+				saveIntervals(interval_t1_Def)
+
+				if (mon !== null) {
+					var samplet2 = "t2_Overshoot_" + overshootquantcournter;
+
+					var samplet3 = "t3_Overshoot_" + overshootquantcournter;
+
+					definitions +=
+						'\n' + space + "t2_Overshoot_" + overshootquantcournter + "=Int('t2_Overshoot_" +
+							overshootquantcournter + "') ";
+					definitions +=
+						'\n' + space + "t3_Overshoot_" + overshootquantcournter + "=Int('t3_Overshoot_" +
+							overshootquantcournter + "') ";
+
+					var interval_t2_def = 'And(' + this.sample2timeText(samplet2) + ">" + tl + ', ' +
+						this.sample2timeText(samplet2) + "<" + t + ')'
+					var interval_t2_id = 'interval_' + samplet2;
+
+					var String interval_t2_Def = '\n' + space + interval_t2_id + '=' + interval_t2_def;
+
+					saveIntervals(interval_t2_Def)
+
+					var interval_t3_def = 'And(' + samplet3 + ">" + samplet2 + ', ' + samplet3 + "<=" +
+						sample2timeText(t) + ')'
+					var interval_t3_id = 'interval_' + samplet3;
+
+					var String interval_t3_Def = '\n' + space + interval_t3_id + '=' + interval_t3_def;
+
+					saveIntervals(interval_t3_Def)
+
+				} else {
+				}
+				overshootquantcournter = overshootquantcournter++;
+
+			}
+			Undershoot: {
+
+				val signal = arithmethicRecursion2(expression.function)
+				val mon = expression.mon
+				var bracketup = expression.bracketup
+				var bracketdown = expression.bracketdown
+
+				var major = "";
+				var minor = "";
+
+				if (bracketdown == "(") {
+					minor = "<"
+				} else {
+					minor = "<="
+				}
+				if (bracketup == ")") {
+					major = ">"
+				} else {
+					major = ">="
+				}
+				var tl = arithmethicRecursion2(expression.lowertime)
+				var tu = arithmethicRecursion2(expression.uppertime)
+
+				val value1 = arithmethicRecursion2(expression.value1);
+
+				val value2 = arithmethicRecursion2(expression.value2);
+
+				var t = "t_Undershoot_" + undershootquantcournter;
+				var t1 = "t1_Undershoot_" + undershootquantcournter;
+
+				var interval_t_def = 'And(' + t + major + tl + ', ' + t + minor + tu + ')'
+				var interval_t_id = 'interval_' + t;
+
+				var String interval_t_Def = '\n' + space + interval_t_id + '=' + interval_t_def;
+
+				saveIntervals(interval_t_Def)
+
+				var interval_t1_def = 'And(' + t1 + major + t + ', ' + t1 + minor + tu + ')'
+				var interval_t1_id = 'interval_' + t1;
+
+				var String interval_t1_Def = '\n' + space + interval_t1_id + '=' + interval_t1_def;
+
+				saveIntervals(interval_t1_Def)
+
+				if (mon !== null) {
+					var samplet2 = "t2_Undershoot_" + undershootquantcournter;
+
+					var samplet3 = "t3_Undershoot_" + undershootquantcournter;
+
+					var interval_t2_def = 'And(' + sample2timeText(samplet2) + ">" + tl + ', ' +
+						sample2timeText(samplet2) + "<" + t + ')'
+					var interval_t2_id = 'interval_' + samplet2;
+
+					var String interval_t2_Def = '\n' + space + interval_t2_id + '=' + interval_t2_def;
+
+					saveIntervals(interval_t2_Def)
+
+					var interval_t3_def = 'And(' + samplet3 + ">" + samplet2 + ', ' + sample2timeText(samplet3) + "<=" +
+						t + ')'
+					var interval_t3_id = 'interval_' + samplet3;
+
+					var String interval_t3_Def = '\n' + space + interval_t3_id + '=' + interval_t3_def;
+
+					
+
+					saveIntervals(interval_t3_Def)
+
+					
+
+				} else {
+				}
+				undershootquantcournter = undershootquantcournter++;
+
+			}
+			Rise: {
+				val signal = arithmethicRecursion2(expression.function)
+				val mon = expression.mon
+				var bracketup = expression.bracketup
+				var bracketdown = expression.bracketdown
+
+				var major = "";
+				var minor = "";
+
+				if (bracketdown == "(") {
+					minor = "<"
+				} else {
+					minor = "<="
+				}
+				if (bracketup == ")") {
+					major = ">"
+				} else {
+					major = ">="
+				}
+				var tl = arithmethicRecursion2(expression.lowertime)
+
+				var tu = arithmethicRecursion2(expression.uppertime)
+
+				val valuerise = arithmethicRecursion2(expression.valuerise);
+
+//								saveIntervals(interval_t1_Def)
+
+				if (mon !== null) {
+					var samplet2 = "t2_Rise_" + risequantcournter;
+
+					var samplet3 = "t3_Rise_" + risequantcournter;
+					definitions +=
+						'\n' + space + "t2_Rise_" + risequantcournter + "=Int('t2_Rise_" + risequantcournter + "') ";
+					definitions +=
+						'\n' + space + "t3_Rise_" + risequantcournter + "=Int('t3_Rise_" + risequantcournter + "') ";
+
+					var interval_t2_def = 'And(' + sample2timeText(samplet2) + ">" + tl + ', ' +
+						sample2timeText(samplet2) + "<" + t + ')'
+					var interval_t2_id = 'interval_' + samplet2;
+
+					var String interval_t2_Def = '\n' + space + interval_t2_id + '=' + interval_t2_def;
+
+					saveIntervals(interval_t2_Def)
+
+					var interval_t3_def = 'And(' + samplet3 + ">" + samplet2 + ', ' + sample2timeText(samplet3) + "<=" +
+						t + ')'
+					var interval_t3_id = 'interval_' + samplet3;
+
+					var String interval_t3_Def = '\n' + space + interval_t3_id + '=' + interval_t3_def;
+
+					saveIntervals(interval_t3_Def)
+
+					
+
+				} else {
+
+				}
+				risequantcournter = risequantcournter++;
+
+			}
+			Fall: {
+				val signal = arithmethicRecursion2(expression.function)
+				val mon = expression.mon
+				var bracketup = expression.bracketup
+				var bracketdown = expression.bracketdown
+
+				var major = "";
+				var minor = "";
+
+				if (bracketdown == "(") {
+					minor = "<"
+				} else {
+					minor = "<="
+				}
+				if (bracketup == ")") {
+					major = ">"
+				} else {
+					major = ">="
+				}
+				var tl = arithmethicRecursion2(expression.lowertime)
+
+				var tu = arithmethicRecursion2(expression.uppertime)
+
+				val valuefall = arithmethicRecursion2(expression.valuerise);
+
+				var t = "t_Fall_" + fallquantcournter;
+				var t1 = "t1_Fall_" + fallquantcournter;
+				definitions +=
+					'\n' + space + "t_Fall_" + fallquantcournter + "=Real('t_Fall_" + fallquantcournter + "') ";
+				definitions +=
+					'\n' + space + "t1_Fall_" + fallquantcournter + "=Real('t1_Fall_" + fallquantcournter + "') ";
+
+				var interval_t_def = 'And(' + t + major + tl + ', ' + t + minor + tu + ')'
+				var interval_t_id = 'interval_' + t;
+
+				var String interval_t_Def = '\n' + space + interval_t_id + '=' + interval_t_def;
+
+				saveIntervals(interval_t_Def)
+
+				var interval_t1_def = 'And(' + t1 + major + tl + ', ' + t1 + minor + t + ')'
+				var interval_t1_id = 'interval_' + t1;
+
+				var String interval_t1_Def = '\n' + space + interval_t1_id + '=' + interval_t1_def;
+
+				saveIntervals(interval_t1_Def)
+
+				if (mon !== null) {
+					var samplet2 = "t2_Fall_" + fallquantcournter;
+
+					var samplet3 = "t3_Fall_" + fallquantcournter;
+					definitions +=
+						'\n' + space + "t2_Fall_" + fallquantcournter + "=Int('t2_Fall_" + fallquantcournter + "') ";
+					definitions +=
+						'\n' + space + "t3_Fall_" + fallquantcournter + "=Int('t3_Fall_" + fallquantcournter + "') ";
+
+					var interval_t2_def = 'And(' + samplet2 + ">" + tl + ', ' + samplet2 + "<" + t + ')'
+					var interval_t2_id = 'interval_' + samplet2;
+
+					var String interval_t2_Def = '\n' + space + interval_t2_id + '=' + interval_t2_def;
+
+					saveIntervals(interval_t2_Def)
+
+					var interval_t3_def = 'And(' + samplet3 + ">" + samplet2 + ', ' + samplet3 + "<=" + t + ')'
+					var interval_t3_id = 'interval_' + samplet3;
+
+					var String interval_t3_Def = '\n' + space + interval_t3_id + '=' + interval_t3_def;
+
+					saveIntervals(interval_t3_Def)
+
+					
+
+				} else {
+					
+				}
+				fallquantcournter = fallquantcournter++;
+
+			}
+			Spike: {
+
+				val signal = arithmethicRecursion2(expression.function)
+
+				var t1spike = "t1spike" + spikecounter;
+				var t2spike = "t2spike" + spikecounter;
+				var t3spike = "t3spike" + spikecounter;
+
+				val opwidth = expression.opwidth as String
+				val opamp = expression.opamp as String
+
+				val width = arithmethicRecursion2(expression.width);
+				val ampl = arithmethicRecursion2(expression.ampl);
+				var tl = arithmethicRecursion2(expression.lowertime)
+
+				var tu = arithmethicRecursion2(expression.uppertime)
+
+				
+
+				val unimax=uni_m_max(signal, t1spike, tl, t2spike);
+				
+				val unimin=uni_sm_min(signal, t2spike, t1spike, t3spike);
+				
+
+				val unimax2=uni_m_max(signal, t3spike, t2spike, tu);
+				
+
+				val unimin2=uni_m_min(signal, t1spike, tl, t2spike)
+				
+
+				val unimax3=uni_sm_max(signal, t2spike, t1spike, t3spike)
+				
+
+				val unimin3=uni_m_min(signal, t3spike, t2spike, tu)
+				
+
+				var exp = ""
+				if (expression.width !== null && expression.ampl !== null) {
+					
+
+					
+
+					
+				} else {
+					if (expression.width !== null) {
+					} else {
+						if (expression.ampl !== null) {
+
+						} else {
+							
+						}
+					}
+				}
+
+				spikecounter = spikecounter + 1;
+
+			}
+			Oscillation: {
+				val signal = arithmethicRecursion2(expression.function)
+
+				var t1osc = "t1osc" + osccounter;
+				var t2osc = "t2osc" + osccounter;
+				var t3osc = "t3osc" + osccounter;
+				var t4osc = "t4osc" + osccounter;
+				var t5osc = "t5osc" + osccounter;
+
+				var tl = arithmethicRecursion2(expression.lowertime)
+
+				var tu = arithmethicRecursion2(expression.uppertime)
+
+
+				val unimax=uni_sm_max(signal, t2osc, t1osc, t3osc)
+				
+
+				val unimin=uni_sm_min(signal, t3osc, t2osc, t4osc)
+				
+
+				val unimax2=uni_sm_max(signal, t4osc, t3osc, t5osc);
+				
+
+				val unimin2=uni_sm_min(signal, t2osc, t1osc, t3osc)
+				
+
+				val unimax3=uni_sm_max(signal, t3osc, t2osc, t4osc)
+				
+
+				val unimin3=uni_sm_min(signal, t4osc, t3osc, t5osc)
+				
+
+				val oscp2pAmp = arithmethicRecursion2(expression.oscp2pAmp)
+				val oscperiod = arithmethicRecursion2(expression.oscperiod)
+
+				val opp2pamp = expression.opp2pamp as String
+				val opperiod = expression.opperiod as String
+
+				var exp = ""
+				if (expression.oscp2pAmp !== null && expression.oscperiod !== null) {
+					
+				} else {
+					if (expression.oscperiod !== null) {
+						
+					} else {
+						if (expression.oscp2pAmp !== null) {
+							
+
+						} else {
+							
+						}
+					}
+				}
+
+				
+
+			}
+		}
+		return expression
+	}
+		
+		def void SetOp(And and, String string)
 
 	def String formulaRecursion(Expression expression) {
 		var text = ''
@@ -1231,6 +1836,277 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 		return text
 	}
 
+	def Expression arithmethicRecursion2(Expression expression) {
+		var text = ""
+
+		switch (expression) {
+			TimeTerm: {
+				text += (arithmethicRecursion(expression.timeTerm))
+			}
+			SampleTerm: {
+				text += arithmethicRecursion(expression.sampleterm)
+			}
+			IntNumber: {
+				val value = (expression as IntNumber).value
+				var String body = '' + value
+				if (expression.unit as String == '[h]') {
+					body = '(' + value + '*3.6*1000000000)'
+				}
+				if (expression.unit as String == '[min]') {
+					body = '(' + value + '*6*10000000)'
+				}
+				if (expression.unit as String == '[ms]') {
+					body = '(' + value + '*1000)'
+				}
+				if (expression.unit as String == '[micros]') {
+					body = '(' + value + '*1)'
+				}
+				if (expression.unit as String == '[nanos]') {
+					body = '(' + value + '*0,001)'
+				}
+				if (expression.unit as String == '[s]') {
+					body = '(' + value + '*1000000)'
+				}
+				text += body
+
+			}
+			NegativeIntNumber: {
+				val number = (expression as NegativeIntNumber).value
+				val value = '(-' + number + ')'
+
+				if (expression.unit !== null) {
+					if (expression.unit as String == '[h]') {
+						text += '(' + value + '*3.6*1000000000)'
+					}
+					if (expression.unit as String == '[min]') {
+						text += '(' + value + '*6*10000000)'
+					}
+					if (expression.unit as String == '[ms]') {
+						text += '(' + value + '*1000)'
+					}
+					if (expression.unit as String == '[micros]') {
+						text += '(' + value + '*1)'
+					}
+					if (expression.unit as String == '[nanos]') {
+						text += '(' + value + '*0,001)'
+					}
+				} else {
+					text += value
+				}
+			}
+			DoubleNumber: {
+				val upper = expression.upper
+				val lower = expression.lower
+				val value = upper + '.' + lower
+
+				if (expression.unit !== null) {
+					if (expression.unit as String == '[h]') {
+						text += '(' + value + '*3.6*1000000000)'
+					}
+					if (expression.unit as String == '[min]') {
+						text += '(' + value + '*6*10000000)'
+					}
+					if (expression.unit as String == '[ms]') {
+						text += '(' + value + '*1000)'
+					}
+					if (expression.unit as String == '[micros]') {
+						text += '(' + value + '*1)'
+					}
+					if (expression.unit as String == '[nanos]') {
+						text += '(' + value + '*0,001)'
+					}
+					if (expression.unit as String == '[s]') {
+						text += '(' + value + '*1000000)'
+					}
+				} else {
+					text += value
+				}
+			}
+			NegativeDoubleNumber: {
+				val upper = expression.upper
+				val lower = expression.lower
+				val value = '-(' + upper + '.' + lower + ')'
+				if (expression.unit !== null) {
+					if (expression.unit as String == '[h]') {
+						text += '(' + value + '*3.6*1000000000)'
+					}
+					if (expression.unit as String == '[min]') {
+						text += '(' + value + '*6*10000000)'
+					}
+					if (expression.unit as String == '[ms]') {
+						text += '(' + value + '*1000)'
+					}
+					if (expression.unit as String == '[micros]') {
+						text += '(' + value + '*1)'
+					}
+					if (expression.unit as String == '[nanos]') {
+						text += '(' + value + '*0,001)'
+					}
+					if (expression.unit as String == '[s]') {
+						text += '(' + value + '*1000000)'
+					}
+				} else {
+					text += value
+				}
+			}
+			SampleTraceEnd: {
+				text += lastSample
+			}
+			TimeTraceEnd: {
+				text += lastTimeStamp
+			}
+			TimeTermExponential: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				text += left + '**' + right
+			}
+			SampleTermExponential: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				text += left + '**' + right
+			}
+			ValueTermExponential: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				text += left + '**' + right
+			}
+			TimeTermMulOrDiv: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				val op = expression.op
+				text += left + op + right
+			}
+			SampleTermMulOrDiv: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				val op = expression.op
+				text += left + op + right
+			}
+			ValueTermMulOrDiv: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				val op = expression.op
+				text += left + op + right
+			}
+			TimeTermPlusOrMinus: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				val op = expression.op
+				text += left + op + right
+			}
+			SampleTermPlusOrMinus: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				val op = expression.op
+				text += left + op + right
+			}
+			ValueTermPlusOrMinus: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				val op = expression.op
+				text += left + op + right
+			}
+			TimeTermBrackets: {
+				val value = arithmethicRecursion(expression.expression)
+				text += "(" + value + ')'
+			}
+			SampleTermBrackets: {
+				val value = arithmethicRecursion(expression.expression)
+				text += "(" + value + ')'
+			}
+			ValueTermBrackets: {
+				val value = arithmethicRecursion(expression.expression)
+				text += "(" + value + ')'
+			}
+			GenericTermRetrieveTimeStampFromSample: {
+				var inside = arithmethicRecursion(expression.expression)
+				text += 'timestamps[' + inside + ']';
+			}
+			GenericTermRetrieveSampleFromTimeStamp: {
+				var inside = arithmethicRecursion(expression.expression)
+				text += time2sampleText(inside)
+
+			}
+			ValueTermGetSampleT: {
+				var samplevalue = time2sampleText(arithmethicRecursion(expression.inside))
+				var signalName = expression.function.name
+				text += signalName + "[" + samplevalue + "]";
+
+			}
+			ValueTermGetSampleS: {
+				var samplevalue = arithmethicRecursion(expression.inside)
+				var signalName = expression.function.name
+				text += signalName + "[" + samplevalue + "]";
+
+			}
+			GenericTerm: {
+				text += (arithmethicRecursion(expression.genericterm))
+			}
+			GenericTermPlusOrMinus: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				val op = expression.op
+				text += left + op + right
+			}
+			GenericTermMulOrDiv: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				val op = expression.op
+				text += left + op + right
+			}
+			GenericTermExponential: {
+				val left = arithmethicRecursion(expression.left)
+				val right = arithmethicRecursion(expression.right)
+				text += left + '**' + right
+			}
+			GenericTermBrackets: {
+				val value = arithmethicRecursion(expression.expression)
+				text += "(" + value + ')'
+			}
+			Variable: {
+				if (expression instanceof SignalImpl) {
+					text += expression.name
+				} else {
+					text += expression.variable.name
+				}
+			}
+			SampleVariableRef: {
+				text += expression.sampleVariable.name;
+			}
+			TimeVariableRef: {
+				val value = expression.timeVariable.name;
+
+				if (expression.unit !== null) {
+					if (expression.unit as String == '[h]') {
+						text += '(' + value + '*3.6*1000000000)'
+					}
+					if (expression.unit as String == '[min]') {
+						text += '(' + value + '*6*10000000)'
+					}
+					if (expression.unit as String == '[s]') {
+						text += '(' + value + '*1000000)'
+					}
+					if (expression.unit as String == '[ms]') {
+						text += '(' + value + '*1000)'
+					}
+					if (expression.unit as String == '[micros]') {
+						text += '(' + value + '*1)'
+					}
+					if (expression.unit as String == '[nanos]') {
+						text += '(' + value + '*0,001)'
+					}
+				} else {
+					text += value
+				}
+			}
+			ConstantVariableRef: {
+				text += expression.constantVariable.name;
+			}
+		}
+
+		return expression
+	}
+
 	def String arithmethicRecursion(Expression expression) {
 		var text = ""
 
@@ -1496,6 +2372,7 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 			}
 			ConstantVariableRef: {
 				text += expression.constantVariable.name;
+				expression.constantVariable.setName("10");
 			}
 		}
 
@@ -1822,7 +2699,7 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 							sb.append('\n' + space + '# the total number of samples is ' + lastSample.intValue + '\n')
 
 							if (requirement.spec !== null && requirement.spec.expression !== null) {
-								var req = requirement.spec.expression
+								var req = simpleMutation(requirement)
 								var header = "from z3 import *\n" + "import time\n"
 								header += "def " + requirement.name + "():\n";
 
@@ -1830,7 +2707,7 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 								var particularText = new StringBuilder
 								definitions = ''
 								timeindex = 0
-								var body = formulaRecursion(requirement.spec.expression)
+								var body = formulaRecursion(req)
 								particularText.append('\n' + definitions)
 								particularText.append('\n' + space + "z3solver.add(Not(" + body + "))")
 								particularText.append('\n' + space + 'status=z3solver.check()\n' + space +
@@ -1875,7 +2752,7 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 				}
 
 				for (requirement : resource.allContents.toIterable.filter(Requirement)) {
-
+					
 					if (requirementNames.contains(requirement.name)) {
 						val originalTraceFilepath = trace.filePath as String
 						var tracefilepath = ".." + File.separator + originalTraceFilepath;
