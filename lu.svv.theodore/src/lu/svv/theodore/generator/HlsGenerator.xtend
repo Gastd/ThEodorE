@@ -87,6 +87,7 @@ import lu.svv.theodore.hls.GenericTermRetrieveSampleFromTimeStamp
 import lu.svv.theodore.hls.GenericTermRetrieveTimeStampFromSample
 import lu.svv.theodore.hls.Neg
 import java.util.List
+import lu.svv.theodore.explain.Mutate
 
 /**
  * Generates code from your model files on save.
@@ -121,6 +122,7 @@ class HlsGenerator extends AbstractGenerator {
 	var sampleStepIsConstant = false
 	var timeindex = 0
 	var generate = false
+	var explain = true
 
 	var space = '\t'
 
@@ -1649,10 +1651,230 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 		for (hls : resource.allContents.toIterable.filter(Hls)) {
 			if (hls.instructions.instructions == "generate") {
 				generate = true
+				explain = true // add explain as an option to the grammar if this makes sense
+			} else if (hls.instructions.instructions == "explain")  {
+				generate = false
+				explain = true
 			}
+			
 		}
 
-		if (generate) {
+		if (explain){
+			
+			for (trace : resource.allContents.toIterable.filter(Trace)) {
+
+				val requirementNames = new HashSet;
+				for (req : trace.requirementref) {
+					requirementNames.add(req.name)
+				}
+
+				for (requirement : resource.allContents.toIterable.filter(Requirement)) {
+
+					if (requirementNames.contains(requirement.name)) {
+
+						val originalTraceFilepath = trace.filePath as String
+						var orifinalFilePath = ".." + File.separator + originalTraceFilepath;
+
+						var signals = newArrayList
+
+						var map = newHashMap
+
+						for (nc : requirement.variables) {
+							switch nc {
+								Signal: {
+									var interpol = 'Constant'
+									if (nc.interpolationType !== null) {
+										interpol = nc.interpolationType as String
+									}
+									var signal = nc.name as String
+									signals.add(signal)
+									map.put(signal, interpol)
+
+								}
+							}
+						}
+
+						// STEP 1 - FILTERING
+
+
+						var filteredFilePath =  ".." + File.separator + "traces-gen-step1" + File.separator +
+							requirement.name + "_" + trace.name + ".tsv";
+						fsa.deleteFile(filteredFilePath);
+
+						var p=new Preprocessing();
+						var numRecords = p.filter(fsa, orifinalFilePath, filteredFilePath, signals);
+
+						minDeltaTime=Math.min(minDeltaTime,p.maxSimulationTime-p.minSimulationTime);
+						maxDeltaTime=Math.max(maxDeltaTime,p.maxSimulationTime-p.minSimulationTime);
+						logsNumberOfEntriesIntermediate.add(numRecords);
+						// STEP 2 - INTERPOLATION
+						val processedTraceFilePath = ".." + File.separator + "traces-gen" + File.separator +
+							requirement.name + "_" + trace.name + ".csv";
+
+						fsa.deleteFile(processedTraceFilePath);
+
+						var preprocessingResult = true;
+						if (resource.allContents.toIterable.filter(Hls).get(0).samplestep.sample == "fixed-manual") {
+							if (trace.sampleStep !== null) {
+								sampleStepIsConstant = true
+
+								sampleStep = getNumber(trace.sampleStep)
+								if (trace.unit as String == '[h]') {
+									sampleStep = sampleStep * 3.6 * 1000000000
+								}
+								if (trace.unit as String == '[min]') {
+									sampleStep = sampleStep * 6 * 10000000
+								}
+								if (trace.unit as String == '[ms]') {
+									sampleStep = sampleStep * 1000
+								}
+								if (trace.unit as String == '[micros]') {
+									sampleStep = sampleStep * 1
+								}
+								if (trace.unit as String == '[nanos]') {
+									sampleStep = sampleStep * 0.001
+								}
+								if (trace.unit as String == '[s]') {
+									sampleStep = sampleStep * 1000000
+								}
+								usedSampleSteps.put(trace.name, sampleStep);
+
+								val preprocessor = new Preprocessing();
+								preprocessingResult = preprocessor.executeFixedSampleStep(fsa, filteredFilePath,
+									processedTraceFilePath, signals, sampleStep, map, originalTraceFilepath,
+									requirement.name, trace.name, logsNumberOfEntries, suggestedSampleSteps)
+								preprocessor.checkCorrectness;
+
+								//println("Pre-processed trace: " + processedTraceFilePath + " correctly generated");
+
+								filteredFilePath = processedTraceFilePath
+							} else {
+								throw new Error("You must specify a sample step when fixed-manual is selected")
+							}
+						} else {
+							if (resource.allContents.toIterable.filter(Hls).get(0).samplestep.sample == "fixed-min") {
+								sampleStepIsConstant = true
+
+								println("Sample step: fixed-min sample step selected")
+
+								val preprocessor = new Preprocessing();
+								sampleStep = preprocessor.getSampleStep(fsa, filteredFilePath, signals)
+
+								preprocessingResult = preprocessor.executeFixedSampleStep(fsa, filteredFilePath,
+									processedTraceFilePath, signals, sampleStep, map, originalTraceFilepath,
+									requirement.name, trace.name, logsNumberOfEntries, suggestedSampleSteps)
+								preprocessor.checkCorrectness;
+
+								//println("Pre-processed trace: " + processedTraceFilePath + " correctly generated");
+
+								filteredFilePath = processedTraceFilePath
+							}
+							else{
+								sampleStepIsConstant=false;
+								val preprocessor = new Preprocessing();
+
+								preprocessingResult = preprocessor.executeVariableSampleStep(fsa, filteredFilePath,
+									processedTraceFilePath, signals, sampleStep, map, originalTraceFilepath,
+									requirement.name, trace.name, logsNumberOfEntries, suggestedSampleSteps)
+								preprocessor.checkCorrectness;
+
+								//println("Pre-processed trace: " + processedTraceFilePath + " correctly generated");
+
+								filteredFilePath = processedTraceFilePath
+
+
+							}
+
+						}
+
+						// STEP 2 - SMT TRANSLATION GENERATION
+						var sb = new StringBuilder();
+						sb.append(space + "start_time=time.time()\n")
+						sb.append(space + "z3solver=Solver() \n");
+
+						if (preprocessingResult) {
+							val tracefile = processfile(fsa, filteredFilePath)
+
+							for (nc : requirement.variables) {
+								switch nc {
+									SampleVariable: {
+										sb.append(space + nc.name + "=Int('" + nc.name + "') \n")
+									}
+									TimeVariable: {
+										sb.append(space + nc.name + "=Real('" + nc.name + "') \n")
+									}
+									NumericVariable: {
+										sb.append(space + nc.name + "=Real('" + nc.name + "') \n")
+									}
+									Signal: {
+										sb.append('\n' + space + '#' + nc.name + ' contained in the file\n')
+
+									}
+								}
+							}
+
+							sb.append('\n' + space + '#Trace: ' + requirement.name + "\n" + tracefile)
+
+							// /////////////////////////////////////////////////////////////////////
+							lastSample = countTimestamps(fsa, filteredFilePath) - 1
+
+							if (trace.sampleStep !== null) {
+								lastTimeStamp = lastSample * sampleStep
+							}
+							// /////////////////////////////////////////////////////////////////////
+							sb.append('\n' + space + '# this is the first time stamp ' + (firstTimeStamp.intValue) +
+								'\n')
+							sb.append('\n' + space + '# this is the last time stamp ' + lastTimeStamp.intValue + '\n')
+							sb.append('\n' + space + '# this is the sample step ' + sampleStep.intValue + '\n')
+							sb.append('\n' + space + '# the total number of samples is ' + lastSample.intValue + '\n')
+
+							if (requirement.spec !== null && requirement.spec.expression !== null) {
+								var req = requirement.spec.expression
+								var header = "from z3 import *\n" + "import time\n"
+								header += "def " + requirement.name + "():\n";
+
+								val sharedText = header + sb.toString
+								var particularText = new StringBuilder
+								definitions = ''
+								timeindex = 0
+								var expression = requirement.spec.expression
+								val mutator = new Mutate()
+								var body = formulaRecursion(mutator.mutate(expression))
+								particularText.append('\n' + definitions)
+								particularText.append('\n' + space + "z3solver.add(Not(" + body + "))")
+								particularText.append('\n' + space + 'status=z3solver.check()\n' + space +
+									'print(status)\n')
+								particularText.append('\n' + space +
+									'print("--- %s seconds ---" % (time.time() - start_time))\n')
+
+								particularText.append(
+									space + 'if status == sat: ' + '\n\t' + space + 'print("REQUIREMENT VIOLATED")' +
+										'\n' + space + space + 'return 0\n' + space + 'if status == unsat:' + '\n\t' +
+										space + 'print("REQUIREMENT SATISFIED")' + '\n' + space + space + 'return 1\n' +
+										space + 'else:' + '\n\t' + space + 'print("UNDECIDED")' + '\n' + space + space +
+										'return 2\n'
+								)
+
+								particularText.append('\n\n\n\n');
+								particularText.append('if __name__ == "__main__":\n');
+								particularText.append(space + requirement.name + '()');
+								val ptclrtxt = particularText.toString
+								val name = requirement.name + '_' + trace.name + ".py";
+								val value = "# Z3Py CODE: \n" + sharedText + ptclrtxt;
+
+								fsa.generateFile(name, value)
+
+								fileList.append(requirement.name + ',' + trace.name + "\n");
+
+							}
+						}
+					}
+				}
+			}
+
+			fsa.generateFile(filePath + "matches.csv", fileList.toString)
+			
+		} else if (generate) {
 
 			for (trace : resource.allContents.toIterable.filter(Trace)) {
 
