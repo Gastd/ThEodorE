@@ -1622,7 +1622,93 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 	def String saveIntervals(String interval) {
 		definitions += '\n' + interval
 	}
+	
+	def String writeSMT(IFileSystemAccess2 fsa, String filteredFilePath, Requirement requirement, Trace trace, Boolean preprocessingResult) {
+		
+		var particularText = new StringBuilder
+		var sharedText = new StringBuilder
+		var sb = new StringBuilder();
+		sb.append(space + "start_time=time.time()\n")
+		sb.append(space + "z3solver=Solver() \n");
 
+		if (preprocessingResult) {
+			val tracefile = processfile(fsa, filteredFilePath)
+
+			for (nc : requirement.variables) {
+				switch nc {
+					SampleVariable: {
+						sb.append(space + nc.name + "=Int('" + nc.name + "') \n")
+					}
+					TimeVariable: {
+						sb.append(space + nc.name + "=Real('" + nc.name + "') \n")
+					}
+					NumericVariable: {
+						sb.append(space + nc.name + "=Real('" + nc.name + "') \n")
+					}
+					Signal: {
+						sb.append('\n' + space + '#' + nc.name + ' contained in the file\n')
+
+					}
+				}
+			}
+
+			sb.append('\n' + space + '#Trace: ' + requirement.name + "\n" + tracefile)
+
+			// /////////////////////////////////////////////////////////////////////
+			lastSample = countTimestamps(fsa, filteredFilePath) - 1
+
+			if (trace.sampleStep !== null) {
+				lastTimeStamp = lastSample * sampleStep
+			}
+			// /////////////////////////////////////////////////////////////////////
+			sb.append('\n' + space + '# this is the first time stamp ' + (firstTimeStamp.intValue) +
+				'\n')
+			sb.append('\n' + space + '# this is the last time stamp ' + lastTimeStamp.intValue + '\n')
+			sb.append('\n' + space + '# this is the sample step ' + sampleStep.intValue + '\n')
+			sb.append('\n' + space + '# the total number of samples is ' + lastSample.intValue + '\n')
+
+			if (requirement.spec !== null && requirement.spec.expression !== null) {
+				var req = requirement.spec.expression
+				var header = "from z3 import *\n" + "import time\n"
+				header += "def " + requirement.name + "():\n";
+
+				sharedText.append(header + sb.toString)
+				definitions = ''
+				timeindex = 0
+				var expression = requirement.spec.expression
+				//val mutator = new Mutate()
+				//expression = mutator.mutate(expression)
+				var body = formulaRecursion(expression)
+				particularText.append('\n' + definitions)
+				particularText.append('\n' + space + "z3solver.add(Not(" + body + "))")
+				particularText.append('\n' + space + 'status=z3solver.check()\n' + space +
+					'print(status)\n')
+				particularText.append('\n' + space +
+					'print("--- %s seconds ---" % (time.time() - start_time))\n')
+
+				particularText.append(
+					space + 'if status == sat: ' + '\n\t' + space + 'print("REQUIREMENT VIOLATED")' +
+						'\n' + space + space + 'return 0\n' + space + 'if status == unsat:' + '\n\t' +
+						space + 'print("REQUIREMENT SATISFIED")' + '\n' + space + space + 'return 1\n' +
+						space + 'else:' + '\n\t' + space + 'print("UNDECIDED")' + '\n' + space + space +
+						'return 2\n'
+				)
+
+				particularText.append('\n\n\n\n');
+				particularText.append('if __name__ == "__main__":\n');
+				particularText.append(space + requirement.name + '()');
+				
+			}
+		}
+		
+		val ptclrtxt = particularText.toString
+		val shdtxt = sharedText.toString
+		val value = "# Z3Py CODE: \n" + shdtxt + ptclrtxt;
+		
+		return value
+						
+	}
+	
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
 
 		minDeltaTime=Long.MAX_VALUE;
@@ -1788,86 +1874,10 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 						}
 
 						// STEP 2 - SMT TRANSLATION GENERATION
-						var sb = new StringBuilder();
-						sb.append(space + "start_time=time.time()\n")
-						sb.append(space + "z3solver=Solver() \n");
-
-						if (preprocessingResult) {
-							val tracefile = processfile(fsa, filteredFilePath)
-
-							for (nc : requirement.variables) {
-								switch nc {
-									SampleVariable: {
-										sb.append(space + nc.name + "=Int('" + nc.name + "') \n")
-									}
-									TimeVariable: {
-										sb.append(space + nc.name + "=Real('" + nc.name + "') \n")
-									}
-									NumericVariable: {
-										sb.append(space + nc.name + "=Real('" + nc.name + "') \n")
-									}
-									Signal: {
-										sb.append('\n' + space + '#' + nc.name + ' contained in the file\n')
-
-									}
-								}
-							}
-
-							sb.append('\n' + space + '#Trace: ' + requirement.name + "\n" + tracefile)
-
-							// /////////////////////////////////////////////////////////////////////
-							lastSample = countTimestamps(fsa, filteredFilePath) - 1
-
-							if (trace.sampleStep !== null) {
-								lastTimeStamp = lastSample * sampleStep
-							}
-							// /////////////////////////////////////////////////////////////////////
-							sb.append('\n' + space + '# this is the first time stamp ' + (firstTimeStamp.intValue) +
-								'\n')
-							sb.append('\n' + space + '# this is the last time stamp ' + lastTimeStamp.intValue + '\n')
-							sb.append('\n' + space + '# this is the sample step ' + sampleStep.intValue + '\n')
-							sb.append('\n' + space + '# the total number of samples is ' + lastSample.intValue + '\n')
-
-							if (requirement.spec !== null && requirement.spec.expression !== null) {
-								var req = requirement.spec.expression
-								var header = "from z3 import *\n" + "import time\n"
-								header += "def " + requirement.name + "():\n";
-
-								val sharedText = header + sb.toString
-								var particularText = new StringBuilder
-								definitions = ''
-								timeindex = 0
-								var expression = requirement.spec.expression
-								val mutator = new Mutate()
-								var body = formulaRecursion(mutator.mutate(expression))
-								particularText.append('\n' + definitions)
-								particularText.append('\n' + space + "z3solver.add(Not(" + body + "))")
-								particularText.append('\n' + space + 'status=z3solver.check()\n' + space +
-									'print(status)\n')
-								particularText.append('\n' + space +
-									'print("--- %s seconds ---" % (time.time() - start_time))\n')
-
-								particularText.append(
-									space + 'if status == sat: ' + '\n\t' + space + 'print("REQUIREMENT VIOLATED")' +
-										'\n' + space + space + 'return 0\n' + space + 'if status == unsat:' + '\n\t' +
-										space + 'print("REQUIREMENT SATISFIED")' + '\n' + space + space + 'return 1\n' +
-										space + 'else:' + '\n\t' + space + 'print("UNDECIDED")' + '\n' + space + space +
-										'return 2\n'
-								)
-
-								particularText.append('\n\n\n\n');
-								particularText.append('if __name__ == "__main__":\n');
-								particularText.append(space + requirement.name + '()');
-								val ptclrtxt = particularText.toString
-								val name = requirement.name + '_' + trace.name + ".py";
-								val value = "# Z3Py CODE: \n" + sharedText + ptclrtxt;
-
-								fsa.generateFile(name, value)
-
-								fileList.append(requirement.name + ',' + trace.name + "\n");
-
-							}
-						}
+						val name = requirement.name + '_' + trace.name + ".py";
+						val value = writeSMT(fsa, filteredFilePath, requirement, trace, preprocessingResult); // "# Z3Py CODE: \n" + sharedText + ptclrtxt;
+						fsa.generateFile(name, value)
+						fileList.append(requirement.name + ',' + trace.name + "\n");
 					}
 				}
 			}
@@ -2003,88 +2013,14 @@ Implies(And(" + sample1increases + "<" + sample2increases + "," + sample2increas
 						}
 
 						// STEP 2 - SMT TRANSLATION GENERATION
-						var sb = new StringBuilder();
-						sb.append(space + "start_time=time.time()\n")
-						sb.append(space + "z3solver=Solver() \n");
-
-						if (preprocessingResult) {
-							val tracefile = processfile(fsa, filteredFilePath)
-
-							for (nc : requirement.variables) {
-								switch nc {
-									SampleVariable: {
-										sb.append(space + nc.name + "=Int('" + nc.name + "') \n")
-									}
-									TimeVariable: {
-										sb.append(space + nc.name + "=Real('" + nc.name + "') \n")
-									}
-									NumericVariable: {
-										sb.append(space + nc.name + "=Real('" + nc.name + "') \n")
-									}
-									Signal: {
-										sb.append('\n' + space + '#' + nc.name + ' contained in the file\n')
-
-									}
-								}
-							}
-
-							sb.append('\n' + space + '#Trace: ' + requirement.name + "\n" + tracefile)
-
-							// /////////////////////////////////////////////////////////////////////
-							lastSample = countTimestamps(fsa, filteredFilePath) - 1
-
-							if (trace.sampleStep !== null) {
-								lastTimeStamp = lastSample * sampleStep
-							}
-							// /////////////////////////////////////////////////////////////////////
-							sb.append('\n' + space + '# this is the first time stamp ' + (firstTimeStamp.intValue) +
-								'\n')
-							sb.append('\n' + space + '# this is the last time stamp ' + lastTimeStamp.intValue + '\n')
-							sb.append('\n' + space + '# this is the sample step ' + sampleStep.intValue + '\n')
-							sb.append('\n' + space + '# the total number of samples is ' + lastSample.intValue + '\n')
-
-							if (requirement.spec !== null && requirement.spec.expression !== null) {
-								var req = requirement.spec.expression
-								var header = "from z3 import *\n" + "import time\n"
-								header += "def " + requirement.name + "():\n";
-
-								val sharedText = header + sb.toString
-								var particularText = new StringBuilder
-								definitions = ''
-								timeindex = 0
-								var body = formulaRecursion(requirement.spec.expression)
-								particularText.append('\n' + definitions)
-								particularText.append('\n' + space + "z3solver.add(Not(" + body + "))")
-								particularText.append('\n' + space + 'status=z3solver.check()\n' + space +
-									'print(status)\n')
-								particularText.append('\n' + space +
-									'print("--- %s seconds ---" % (time.time() - start_time))\n')
-
-								particularText.append(
-									space + 'if status == sat: ' + '\n\t' + space + 'print("REQUIREMENT VIOLATED")' +
-										'\n' + space + space + 'return 0\n' + space + 'if status == unsat:' + '\n\t' +
-										space + 'print("REQUIREMENT SATISFIED")' + '\n' + space + space + 'return 1\n' +
-										space + 'else:' + '\n\t' + space + 'print("UNDECIDED")' + '\n' + space + space +
-										'return 2\n'
-								)
-
-								particularText.append('\n\n\n\n');
-								particularText.append('if __name__ == "__main__":\n');
-								particularText.append(space + requirement.name + '()');
-								val ptclrtxt = particularText.toString
-								val name = requirement.name + '_' + trace.name + ".py";
-								val value = "# Z3Py CODE: \n" + sharedText + ptclrtxt;
-
-								fsa.generateFile(name, value)
-
-								fileList.append(requirement.name + ',' + trace.name + "\n");
-
-							}
-						}
+						val name = requirement.name + '_' + trace.name + ".py";
+						val value = writeSMT(fsa, filteredFilePath, requirement, trace, preprocessingResult); // "# Z3Py CODE: \n" + sharedText + ptclrtxt;
+						fsa.generateFile(name, value)
+						fileList.append(requirement.name + ',' + trace.name + "\n");
 					}
 				}
 			}
-
+			
 			fsa.generateFile(filePath + "matches.csv", fileList.toString)
 
 		} else {
