@@ -17,11 +17,19 @@ import io.jenetics.prog.regression.Regression;
 import io.jenetics.prog.regression.Sample;
 import io.jenetics.util.ISeq;
 
+import lu.svv.theodore.hls.And;
+import lu.svv.theodore.hls.Expression;
+import lu.svv.theodore.hls.Or;
+import lu.svv.theodore.explain.DoubleBoolOp;
+import lu.svv.theodore.explain.QuantifiersOp;
+
 public class Explain {
 
 	// Definition of the allowed operations
 	// Ricardo> Here I think that we should have the internal nodes of our property: ForAll, And, Or, ...
-	private static final ISeq<Op<Double>> OPS = ISeq.of(MathOp.ADD, MathOp.SUB, MathOp.MUL) ;
+	private static final ISeq<Op<Double>> OPS = ISeq.of(MathOp.ADD, MathOp.SUB, MathOp.MUL, MathOp.DIV,
+			DoubleBoolOp.AND, DoubleBoolOp.OR, DoubleBoolOp.NOT, DoubleBoolOp.IMP, DoubleBoolOp.XOR, DoubleBoolOp.EQU,
+			QuantifiersOp.FORALL, QuantifiersOp.EXISTS);
 
 	// Definition of terminals
 	// Ricardo> Here I think that we should have the internal nodes of our property: Consts, Vars, ...
@@ -39,6 +47,21 @@ public class Explain {
 	    Sample.ofDouble(0.9, 1.3860),
 	    Sample.ofDouble(1.0, 2.0000)
 	);
+	
+	/**
+	 * Transform AST Expression in a Program Chromosome
+	 * 
+	 * @param expression HLS Expression
+	 * @return the AST as a Chromosome
+	 */
+	public static ProgramChromosome<Double> setSeed(Expression expression) {
+		ProgramChromosome<Double> seedExpression;
+//		if(expression instanceof And) {
+//			ProgramChromosome<Double> left = setSeed(((And)expression).getLeft());
+//			ProgramChromosome<Double> right = setSeed(((And)expression).getRight());
+//		}
+		return seedExpression;
+	}
 
 	public static void run() {
 	    final Engine<ProgramGene<Double>, Double> engine = Engine
