@@ -14,20 +14,88 @@ import io.jenetics.prog.op.Var;
 import io.jenetics.ext.util.Tree;
 import io.jenetics.ext.util.TreeNode;
 
-//import lu.svv.theodore.explain.Cast;
 
+public enum HlsOp implements Op<Double> {
 
-public enum QuantifiersOp implements Op<Double> {
+	/* *************************************************************************
+	 * Arithmetic operations
+	 * ************************************************************************/
+	/**
+	 * Returns the sum of its arguments.
+	 * <em>This operation has arity 2.</em>
+	 */
+	ADD("add", 2, v -> v[0] + v[1]),
+
+	/**
+	 * Return the diff of its arguments.
+	 * <em>This operation has arity 2.</em>
+	 */
+	SUB("sub", 2, v -> v[0] - v[1]),
+
+	/**
+	 * Returns the product of its arguments.
+	 * <em>This operation has arity 2.</em>
+	 */
+	MUL("mul", 2, v -> v[0]*v[1]),
+
+	/**
+	 * Returns the quotient of its arguments.
+	 * <em>This operation has arity 2.</em>
+	 */
+	DIV("div", 2, v -> v[0]/v[1]),
+
+	/* *************************************************************************
+	 * Logic operations
+	 * ************************************************************************/
+	/**
+     * Conjunction. <em>This operation has arity 2.</em>
+     */
+    AND("and", 2, v -> Cast.toDouble(Cast.toBoolean(v[0]) && Cast.toBoolean(v[1]))),
+
+    /**
+     * Disjunction. <em>This operation has arity 2.</em>
+     */
+    OR("or", 2, v -> Cast.toDouble(Cast.toBoolean(v[0]) || Cast.toBoolean(v[1]))),
+
+    /**
+     * Negation. <em>This operation has arity 1.</em>
+     */
+    NOT("not", 1, v -> Cast.toDouble(!Cast.toBoolean(v[0]))),
+
+    /**
+     * Implication. <em>This operation has arity 2.</em>
+     */
+    IMP("imp", 2, v -> Cast.toDouble(!Cast.toBoolean(v[0]) || Cast.toBoolean(v[1]))),
+
+    /**
+     * Exclusive or. <em>This operation has arity 2.</em>
+     */
+    XOR("xor", 2, v -> Cast.toDouble((Cast.toBoolean(v[0]) || Cast.toBoolean(v[1])) && !(Cast.toBoolean(v[0]) && Cast.toBoolean(v[1])))),
+
+    /**
+     * Equivalence. <em>This operation has arity 2.</em>
+     */
+    EQU("equ", 2, v -> Cast.toDouble((Cast.toBoolean(v[0]) && Cast.toBoolean(v[1])) || (!Cast.toBoolean(v[0]) && !Cast.toBoolean(v[1])))),
 
     /**
      * Conjunction. <em>This operation has arity 3.</em>
      */
-    FORALL("forall", 3, v -> forAll(v[0], v[1], v[2])),
+    FORALL("ForAll", 3, v -> forAll(v[0], v[1], v[2])),
 
     /**
      * Disjunction. <em>This operation has arity 3.</em>
      */
-    EXISTS("exists", 3, v -> exists(v[0], v[1], v[2]));
+    EXISTS("Exists", 3, v -> exists(v[0], v[1], v[2]));
+
+    /**
+     * Represents the constant {@code true}.
+     */
+    public static final Const<Double> TRUE = Const.of("true", 1.0);
+
+    /**
+     * Represents the constant {@code true}.
+     */
+    public static final Const<Double> FALSE = Const.of("false", 0.0);
 
 	/**
 	 * Stub method
@@ -55,7 +123,7 @@ public enum QuantifiersOp implements Op<Double> {
     private final int _arity;
     private final Function<Double[], Double> _function;
 
-    QuantifiersOp(
+    HlsOp(
             final String name,
             final int arity,
             final Function<Double[], Double> function
