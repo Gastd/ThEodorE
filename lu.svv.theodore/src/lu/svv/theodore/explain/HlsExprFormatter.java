@@ -4,8 +4,9 @@ package lu.svv.theodore.explain;
 import java.util.Map;
 
 import io.jenetics.ext.util.Tree;
-import io.jenetics.prog.op.MathOp;
+//import io.jenetics.prog.op.HlsOp;
 import io.jenetics.prog.op.Op;
+import lu.svv.theodore.explain.HlsOp;
 
 /**
  * @author <a href="mailto:franz.wilhelmstoetter@gmail.com">Franz Wilhelmstotter</a>
@@ -15,22 +16,34 @@ import io.jenetics.prog.op.Op;
 final class HlsExprFormatter {
 	private HlsExprFormatter() {}
 
-	private static final Map<Op<Double>, String> INFIX_OPS = Map.of(
-		MathOp.ADD, " + ",
-		MathOp.SUB, " - ",
-		MathOp.MUL, "*",
-		MathOp.DIV, "/",
-		MathOp.MOD, "%",
-		MathOp.POW, "^"
+	private static final Map<Op<Double>, String> INFIX_OPS = Map.ofEntries(
+		Map.entry(HlsOp.ADD, " + "),
+		Map.entry(HlsOp.SUB, " - "),
+		Map.entry(HlsOp.MUL, "*"),
+		Map.entry(HlsOp.DIV, "/"),
+		Map.entry(HlsOp.AND, "and"),
+		Map.entry(HlsOp.OR, "or"),
+		Map.entry(HlsOp.NOT, "not"),
+		Map.entry(HlsOp.IMP, "->"),
+		Map.entry(HlsOp.XOR, "xor"),
+		Map.entry(HlsOp.EQU, "=="),
+		Map.entry(HlsOp.FORALL, "ForAll"),
+		Map.entry(HlsOp.EXISTS, "Existis")
 	);
 
-	private static final Map<Op<Double>, Integer> PRECEDENCE = Map.of(
-		MathOp.ADD, 6,
-		MathOp.SUB, 6,
-		MathOp.MUL, 5,
-		MathOp.DIV, 5,
-		MathOp.MOD, 5,
-		MathOp.POW, 4
+	private static final Map<Op<Double>, Integer> PRECEDENCE = Map.ofEntries(
+		Map.entry(HlsOp.ADD, 6),
+		Map.entry(HlsOp.SUB, 6),
+		Map.entry(HlsOp.MUL, 5),
+		Map.entry(HlsOp.DIV, 5),
+		Map.entry(HlsOp.AND, 6),
+		Map.entry(HlsOp.OR, 6),
+		Map.entry(HlsOp.NOT, 9),
+		Map.entry(HlsOp.IMP, 9),
+		Map.entry(HlsOp.XOR, 9),
+		Map.entry(HlsOp.EQU, 9),
+		Map.entry(HlsOp.FORALL, 9),
+		Map.entry(HlsOp.EXISTS, 9)
 	);
 
 	static String format(final Tree<? extends Op<Double>, ?> tree) {
