@@ -9,10 +9,12 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import io.jenetics.prog.op.Op;
+import io.jenetics.prog.op.Const;
+import io.jenetics.prog.op.Var;
 import io.jenetics.ext.util.Tree;
 import io.jenetics.ext.util.TreeNode;
 
-import lu.svv.theodore.explain.Cast;
+//import lu.svv.theodore.explain.Cast;
 
 
 public enum DoubleBoolOp implements Op<Double> {
@@ -60,12 +62,12 @@ public enum DoubleBoolOp implements Op<Double> {
 
     private final String _name;
     private final int _arity;
-    private final Function<Boolean[], Boolean> _function;
+    private final Function<Double[], Double> _function;
 
     DoubleBoolOp(
             final String name,
             final int arity,
-            final Function<Boolean[], Boolean> function
+            final Function<Double[], Double> function
     ) {
             assert name != null;
             assert arity >= 0;
@@ -139,15 +141,15 @@ public enum DoubleBoolOp implements Op<Double> {
      * @throws NullPointerException if the given string {@code value} is
      *         {@code null}
      */
-    public static Op<Boolean> toBoolOp(final String string) {
+    public static Op<Double> toBoolOp(final String string) {
             requireNonNull(string);
 
-            final Op<Boolean> result;
-            final Optional<Const<Boolean>> cop = toConst(string);
+            final Op<Double> result;
+            final Optional<Const<Double>> cop = toConst(string);
             if (cop.isPresent()) {
                     result = cop.orElseThrow(AssertionError::new);
             } else {
-                    final Optional<Op<Boolean>> mop = toOp(string);
+                    final Optional<Op<Double>> mop = toOp(string);
                     result = mop.isPresent()
                             ? mop.orElseThrow(AssertionError::new)
                             : Var.parse(string);
@@ -156,25 +158,25 @@ public enum DoubleBoolOp implements Op<Double> {
             return result;
     }
 
-    static Optional<Const<Boolean>> toConst(final String string) {
+    static Optional<Const<Double>> toConst(final String string) {
             return tryParseBoolean(string)
                     .map(Const::of);
     }
 
-    private static Optional<Boolean> tryParseBoolean(final String value) {
+    private static Optional<Double> tryParseBoolean(final String value) {
             switch (value) {
                     case "true":
-                    case "1": return Optional.of(true);
+                    case "1": return Optional.of(1.0);
                     case "false":
-                    case "0": return Optional.of(false);
+                    case "0": return Optional.of(0.0);
                     default: return Optional.empty();
             }
     }
 
-    private static Optional<Op<Boolean>> toOp(final String string) {
+    private static Optional<Op<Double>> toOp(final String string) {
             return Stream.of(values())
                     .filter(op -> Objects.equals(op._name, string))
-                    .map(op -> (Op<Boolean>)op)
+                    .map(op -> (Op<Double>)op)
                     .findFirst();
     }
 }

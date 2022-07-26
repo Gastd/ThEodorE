@@ -9,21 +9,23 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import io.jenetics.prog.op.Op;
+import io.jenetics.prog.op.Const;
+import io.jenetics.prog.op.Var;
 import io.jenetics.ext.util.Tree;
 import io.jenetics.ext.util.TreeNode;
 
-import lu.svv.theodore.explain.Cast;
+//import lu.svv.theodore.explain.Cast;
 
 
 public enum QuantifiersOp implements Op<Double> {
 
     /**
-     * Conjunction. <em>This operation has arity 2.</em>
+     * Conjunction. <em>This operation has arity 3.</em>
      */
     FORALL("forall", 3, v -> forAll(v[0], v[1], v[2])),
 
     /**
-     * Disjunction. <em>This operation has arity 2.</em>
+     * Disjunction. <em>This operation has arity 3.</em>
      */
     EXISTS("exists", 3, v -> exists(v[0], v[1], v[2]));
 
@@ -155,9 +157,9 @@ public enum QuantifiersOp implements Op<Double> {
     private static Optional<Double> tryParseDouble(final String value) {
             switch (value) {
                     case "true":
-                    case "1": return Optional.of(true);
+                    case "1": return Optional.of(1.0);
                     case "false":
-                    case "0": return Optional.of(false);
+                    case "0": return Optional.of(0.0);
                     default: return Optional.empty();
             }
     }
