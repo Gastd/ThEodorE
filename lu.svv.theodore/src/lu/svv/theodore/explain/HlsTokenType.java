@@ -9,24 +9,34 @@ import io.jenetics.ext.internal.parser.Token;
  * @version 7.1
  * @since 7.1
  */
-enum MathTokenType implements Token.Type {
-	LPAREN(1),
-	RPAREN(2),
-	COMMA(3),
+enum HlsTokenType implements Token.Type {
+	LBRACKETS(1),
+	RBRACKETS(2),
+	LBRACES(3),
+	RBRACES(4),
+	LPAREN(5),
+	RPAREN(6),
+	COMMA(7),
 
-	PLUS(4),
-	MINUS(5),
-	TIMES(6),
-	DIV(7),
-	MOD(8),
-	POW(9),
+	PLUS(8),
+	MINUS(9),
+	TIMES(10),
+	DIV(11),
+	POW(12),
+	AND(13),
+	OR(14),
+	IMP(15),
+	XOR(16),
+	EQU(17),
+	FORALL(18),
+	EXISTS(19),
 
-	NUMBER(10),
-	IDENTIFIER(11);
+	NUMBER(20),
+	IDENTIFIER(21);
 
 	private final int _code;
 
-	MathTokenType(final int code) {
+	HlsTokenType(final int code) {
 		_code = code;
 	}
 

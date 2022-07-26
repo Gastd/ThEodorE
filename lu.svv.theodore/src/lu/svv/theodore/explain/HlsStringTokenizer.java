@@ -4,17 +4,16 @@ import static java.lang.Character.isDigit;
 import static java.lang.Character.isJavaIdentifierPart;
 import static java.lang.Character.isJavaIdentifierStart;
 import static java.lang.String.format;
-import static lu.svv.theodore.explain.MathTokenType.COMMA;
-import static lu.svv.theodore.explain.MathTokenType.DIV;
-import static lu.svv.theodore.explain.MathTokenType.IDENTIFIER;
-import static lu.svv.theodore.explain.MathTokenType.LPAREN;
-import static lu.svv.theodore.explain.MathTokenType.MINUS;
-import static lu.svv.theodore.explain.MathTokenType.MOD;
-import static lu.svv.theodore.explain.MathTokenType.NUMBER;
-import static lu.svv.theodore.explain.MathTokenType.PLUS;
-import static lu.svv.theodore.explain.MathTokenType.POW;
-import static lu.svv.theodore.explain.MathTokenType.RPAREN;
-import static lu.svv.theodore.explain.MathTokenType.TIMES;
+import static lu.svv.theodore.explain.HlsTokenType.COMMA;
+import static lu.svv.theodore.explain.HlsTokenType.DIV;
+import static lu.svv.theodore.explain.HlsTokenType.IDENTIFIER;
+import static lu.svv.theodore.explain.HlsTokenType.LPAREN;
+import static lu.svv.theodore.explain.HlsTokenType.MINUS;
+import static lu.svv.theodore.explain.HlsTokenType.NUMBER;
+import static lu.svv.theodore.explain.HlsTokenType.PLUS;
+import static lu.svv.theodore.explain.HlsTokenType.POW;
+import static lu.svv.theodore.explain.HlsTokenType.RPAREN;
+import static lu.svv.theodore.explain.HlsTokenType.TIMES;
 
 import io.jenetics.ext.internal.parser.CharSequenceTokenizer;
 import io.jenetics.ext.internal.parser.ParsingException;
@@ -83,9 +82,6 @@ final class HlsStringTokenizer extends CharSequenceTokenizer {
 				case '/':
 					consume();
 					return DIV.token(value);
-				case '%':
-					consume();
-					return MOD.token(value);
 				case '^':
 					consume();
 					return POW.token(value);
