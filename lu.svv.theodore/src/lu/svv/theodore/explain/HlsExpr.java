@@ -8,17 +8,16 @@ import static io.jenetics.ext.internal.util.FormulaParser.TokenType.FUNCTION;
 import static io.jenetics.ext.internal.util.FormulaParser.TokenType.UNARY_OPERATOR;
 import static io.jenetics.internal.util.SerialIO.readInt;
 import static io.jenetics.internal.util.SerialIO.writeInt;
-import static lu.svv.theodore.explain.MathTokenType.COMMA;
-import static lu.svv.theodore.explain.MathTokenType.DIV;
-import static lu.svv.theodore.explain.MathTokenType.IDENTIFIER;
-import static lu.svv.theodore.explain.MathTokenType.LPAREN;
-import static lu.svv.theodore.explain.MathTokenType.MINUS;
-import static lu.svv.theodore.explain.MathTokenType.MOD;
-import static lu.svv.theodore.explain.MathTokenType.NUMBER;
-import static lu.svv.theodore.explain.MathTokenType.PLUS;
-import static lu.svv.theodore.explain.MathTokenType.POW;
-import static lu.svv.theodore.explain.MathTokenType.RPAREN;
-import static lu.svv.theodore.explain.MathTokenType.TIMES;
+import static lu.svv.theodore.explain.HlsTokenType.COMMA;
+import static lu.svv.theodore.explain.HlsTokenType.DIV;
+import static lu.svv.theodore.explain.HlsTokenType.IDENTIFIER;
+import static lu.svv.theodore.explain.HlsTokenType.LPAREN;
+import static lu.svv.theodore.explain.HlsTokenType.MINUS;
+import static lu.svv.theodore.explain.HlsTokenType.NUMBER;
+import static lu.svv.theodore.explain.HlsTokenType.PLUS;
+import static lu.svv.theodore.explain.HlsTokenType.POW;
+import static lu.svv.theodore.explain.HlsTokenType.RPAREN;
+import static lu.svv.theodore.explain.HlsTokenType.TIMES;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -76,7 +75,7 @@ public final class HlsExpr
                         .unaryOperators(t -> t.type() == PLUS || t.type() == MINUS)
                         .binaryOperators(ops -> ops
                                 .add(11, t -> t.type() == PLUS || t.type() == MINUS)
-                                .add(12, t -> t.type() == TIMES || t.type() == DIV || t.type() == MOD)
+                                .add(12, t -> t.type() == TIMES || t.type() == DIV)
                                 .add(13, t -> t.type() == POW)
                         )
                         .identifiers(t -> t.type() == IDENTIFIER || t.type() == NUMBER)
@@ -330,12 +329,11 @@ public final class HlsExpr
                 final Token<String> token,
                 final TokenType type
         ) {
-                return switch ((MathTokenType)token.type()) {
+                return switch ((HlsTokenType)token.type()) {
                         case PLUS -> type == UNARY_OPERATOR ? MathOp.ID : MathOp.ADD;
                         case MINUS -> type == UNARY_OPERATOR ? MathOp.NEG : MathOp.SUB;
                         case TIMES -> MathOp.MUL;
                         case DIV -> MathOp.DIV;
-                        case MOD -> MathOp.MOD;
                         case POW -> MathOp.POW;
                         case NUMBER -> Const.of(Double.parseDouble(token.value()));
                         case IDENTIFIER -> {
