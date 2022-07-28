@@ -16,8 +16,14 @@ import static lu.svv.theodore.explain.HlsTokenType.MINUS;
 import static lu.svv.theodore.explain.HlsTokenType.NUMBER;
 import static lu.svv.theodore.explain.HlsTokenType.PLUS;
 import static lu.svv.theodore.explain.HlsTokenType.POW;
+import static lu.svv.theodore.explain.HlsTokenType.GT;
+import static lu.svv.theodore.explain.HlsTokenType.GE;
+import static lu.svv.theodore.explain.HlsTokenType.LT;
+import static lu.svv.theodore.explain.HlsTokenType.LE;
 import static lu.svv.theodore.explain.HlsTokenType.RPAREN;
 import static lu.svv.theodore.explain.HlsTokenType.TIMES;
+import static lu.svv.theodore.explain.HlsTokenType.FORALL;
+import static lu.svv.theodore.explain.HlsTokenType.EXISTS;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -33,7 +39,7 @@ import java.util.function.Supplier;
 import io.jenetics.internal.util.Lazy;
 import io.jenetics.prog.op.Const;
 import io.jenetics.prog.op.ConstRewriter;
-import io.jenetics.prog.op.MathOp;
+//import io.jenetics.prog.op.HlsOp;
 import io.jenetics.prog.op.Op;
 import io.jenetics.prog.op.Program;
 import io.jenetics.prog.op.Var;
@@ -41,6 +47,7 @@ import io.jenetics.util.ISeq;
 
 import io.jenetics.ext.internal.parser.ParsingException;
 import io.jenetics.ext.internal.parser.Token;
+//import io.jenetics.ext.internal.parser.Token.Type;
 import io.jenetics.ext.internal.util.FormulaParser;
 import io.jenetics.ext.internal.util.FormulaParser.TokenType;
 import io.jenetics.ext.rewriting.TreeRewriteRule;
@@ -77,9 +84,12 @@ public final class HlsExpr
                                 .add(11, t -> t.type() == PLUS || t.type() == MINUS)
                                 .add(12, t -> t.type() == TIMES || t.type() == DIV)
                                 .add(13, t -> t.type() == POW)
+                                .add(14, t -> t.type() == GT || t.type() == GE)
+                                .add(15, t -> t.type() == LT || t.type() == LE)
+                                .add(16, t -> t.type() == FORALL || t.type() == EXISTS)
                         )
                         .identifiers(t -> t.type() == IDENTIFIER || t.type() == NUMBER)
-                        .functions(t -> MathOp.NAMES.contains(t.value()))
+                        .functions(t -> HlsOp.NAMES.contains(t.value()))
                         .build();
 
         /**
@@ -120,28 +130,28 @@ public final class HlsExpr
          *
          * @since 5.0
          */
-        public static final TreeRewriter<Op<Double>> ARITHMETIC_REWRITER =
-                TreeRewriter.concat(
-                        compile("sub($x,$x) -> 0"),
-                        compile("sub($x,0) -> $x"),
-                        compile("add($x,0) -> $x"),
-                        compile("add(0,$x) -> $x"),
-                        compile("add($x,$x) -> mul(2,$x)"),
-                        compile("div($x,$x) -> 1"),
-                        compile("div(0,$x) -> 0"),
-                        compile("mul($x,0) -> 0"),
-                        compile("mul(0,$x) -> 0"),
-                        compile("mul($x,1) -> $x"),
-                        compile("mul(1,$x) -> $x"),
-                        compile("mul($x,$x) -> pow($x,2)"),
-                        compile("pow($x,0) -> 1"),
-                        compile("pow(0,$x) -> 0"),
-                        compile("pow($x,1) -> $x"),
-                        compile("pow(1,$x) -> 1")
-                );
+//        public static final TreeRewriter<Op<Double>> ARITHMETIC_REWRITER =
+//                TreeRewriter.concat(
+//                        compile("sub($x,$x) -> 0"),
+//                        compile("sub($x,0) -> $x"),
+//                        compile("add($x,0) -> $x"),
+//                        compile("add(0,$x) -> $x"),
+//                        compile("add($x,$x) -> mul(2,$x)"),
+//                        compile("div($x,$x) -> 1"),
+//                        compile("div(0,$x) -> 0"),
+//                        compile("mul($x,0) -> 0"),
+//                        compile("mul(0,$x) -> 0"),
+//                        compile("mul($x,1) -> $x"),
+//                        compile("mul(1,$x) -> $x"),
+//                        compile("mul($x,$x) -> pow($x,2)"),
+//                        compile("pow($x,0) -> 1"),
+//                        compile("pow(0,$x) -> 0"),
+//                        compile("pow($x,1) -> $x"),
+//                        compile("pow(1,$x) -> 1")
+//                );
 
         private static TreeRewriter<Op<Double>> compile(final String rule) {
-                return TreeRewriteRule.parse(rule, MathOp::toMathOp);
+                return TreeRewriteRule.parse(rule, HlsOp::toHlsOp);
         }
 
         /**
@@ -151,7 +161,7 @@ public final class HlsExpr
          * @since 5.0
          */
         public static final TreeRewriter<Op<Double>> REWRITER = TreeRewriter.concat(
-                ARITHMETIC_REWRITER,
+//                ARITHMETIC_REWRITER,
                 CONST_REWRITER
         );
 
@@ -330,18 +340,23 @@ public final class HlsExpr
                 final TokenType type
         ) {
                 return switch ((HlsTokenType)token.type()) {
-                        case PLUS -> type == UNARY_OPERATOR ? MathOp.ID : MathOp.ADD;
-                        case MINUS -> type == UNARY_OPERATOR ? MathOp.NEG : MathOp.SUB;
-                        case TIMES -> MathOp.MUL;
-                        case DIV -> MathOp.DIV;
-                        case POW -> MathOp.POW;
+                        case PLUS -> type == UNARY_OPERATOR ? HlsOp.ID : HlsOp.ADD;
+                        case MINUS -> type == UNARY_OPERATOR ? HlsOp.NEG : HlsOp.SUB;
+                        case TIMES -> HlsOp.MUL;
+                        case DIV -> HlsOp.DIV;
+                        case GT -> HlsOp.GT;
+                        case GE -> HlsOp.GE;
+                        case LT -> HlsOp.LT;
+                        case LE -> HlsOp.LE;
+                        case FORALL -> HlsOp.FORALL;
+                        case EXISTS -> HlsOp.EXISTS;
                         case NUMBER -> Const.of(Double.parseDouble(token.value()));
                         case IDENTIFIER -> {
                                 if (type == FUNCTION) {
-                                        yield MathOp.toMathOp(token.value());
+                                        yield HlsOp.toHlsOp(token.value());
                                 } else {
                                         yield switch (token.value()) {
-                                                case "Ï€", "PI" -> MathOp.PI;
+                                                case "pi", "PI" -> HlsOp.PI;
                                                 default -> Var.of(token.value());
                                         };
                                 }
@@ -419,7 +434,7 @@ public final class HlsExpr
         /**
          * Parses the given mathematical expression string and returns the
          * mathematical expression tree. The expression may contain all functions
-         * defined in {@link MathOp}.
+         * defined in {@link HlsOp}.
          * <pre>{@code
          * final Tree<? extends Op<Double>, ?> tree = HlsExpr
          *     .parseTree("5 + 6*x + sin(x)^34 + (1 + sin(x*5)/4)/6");
