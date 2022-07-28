@@ -7,10 +7,6 @@ import java.io.ObjectOutput;
 import java.io.Serial;
 import java.io.StreamCorruptedException;
 
-import io.jenetics.prog.op.Const;
-import io.jenetics.prog.op.EphemeralConst;
-import io.jenetics.prog.op.MathExpr;
-
 /**
  * @author <a href="mailto:franz.wilhelmstoetter@gmail.com">Franz Wilhelmstotter</a>
  * @version 4.1
@@ -22,9 +18,8 @@ final class SerialProxy implements Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	static final byte HLS_EXPR = 2;
-//	static final byte MATH_EXPR = 1;
-//	static final byte CONST = 3;
-//	static final byte EPHEMERAL_CONST = 4;
+	static final byte CONST = 3;
+	static final byte EPHEMERAL_CONST = 4;
 
 	/**
 	 * The type being serialized.
@@ -58,9 +53,8 @@ final class SerialProxy implements Externalizable {
 		out.writeByte(_type);
 		switch (_type) {
 			case HLS_EXPR -> ((HlsExpr)_object).write(out);
-//			case MATH_EXPR -> ((MathExpr)_object).write(out);
-//			case CONST -> ((Const<?>)_object).write(out);
-//			case EPHEMERAL_CONST -> ((EphemeralConst<?>)_object).write(out);
+			case CONST -> ((Const<?>)_object).write(out);
+			case EPHEMERAL_CONST -> ((EphemeralConst<?>)_object).write(out);
 			default -> throw new StreamCorruptedException("Unknown serialized type.");
 		}
 	}
@@ -72,9 +66,8 @@ final class SerialProxy implements Externalizable {
 		_type = in.readByte();
 		_object = switch (_type) {
 			case HLS_EXPR -> HlsExpr.read(in);
-//			case MATH_EXPR -> MathExpr.read(in);
-//			case CONST -> Const.read(in);
-//			case EPHEMERAL_CONST -> EphemeralConst.read(in);
+			case CONST -> Const.read(in);
+			case EPHEMERAL_CONST -> EphemeralConst.read(in);
 			default -> throw new StreamCorruptedException("Unknown serialized type.");
 		};
 	}
