@@ -2,56 +2,55 @@ package lu.svv.theodore.explain;
 
 import static io.jenetics.util.RandomRegistry.random;
 
-import java.util.function.Function;
+//import java.util.function.Function;
 
-import io.jenetics.EnumGene;
+//import io.jenetics.EnumGene;
 import io.jenetics.Genotype;
-import io.jenetics.IntegerGene;
+//import io.jenetics.IntegerGene;
 import io.jenetics.Mutator;
 import io.jenetics.Phenotype;
 import io.jenetics.engine.Codec;
-import io.jenetics.engine.Codecs;
+//import io.jenetics.engine.Codecs;
 import io.jenetics.engine.Engine;
 import io.jenetics.engine.EvolutionResult;
 import io.jenetics.engine.EvolutionStart;
-import io.jenetics.engine.EvolutionStream;
+//import io.jenetics.engine.EvolutionStream;
 import io.jenetics.engine.Limits;
-import io.jenetics.engine.Problem;
-import io.jenetics.ext.SingleNodeCrossover;
+//import io.jenetics.engine.Problem;
+//import io.jenetics.ext.SingleNodeCrossover;
 import io.jenetics.ext.util.Tree;
 import io.jenetics.ext.util.TreeNode;
 import io.jenetics.prog.ProgramChromosome;
 import io.jenetics.prog.ProgramGene;
-import io.jenetics.prog.op.EphemeralConst;
-import io.jenetics.prog.op.MathExpr;
-import io.jenetics.prog.op.MathOp;
 import io.jenetics.prog.op.Op;
 import io.jenetics.prog.op.Var;
 import io.jenetics.prog.regression.Complexity;
 import io.jenetics.prog.regression.LossFunction;
-import io.jenetics.prog.regression.Regression;
-import io.jenetics.prog.regression.Sample;
+//import io.jenetics.prog.regression.Regression;
+//import io.jenetics.prog.regression.Sample;
 import io.jenetics.prog.regression.Error;
-import io.jenetics.prog.regression.Sampling;
-import io.jenetics.prog.regression.Sampling.Result;
-import io.jenetics.util.Factory;
+//import io.jenetics.prog.regression.Sampling;
+//import io.jenetics.prog.regression.Sampling.Result;
+//import io.jenetics.util.Factory;
 import io.jenetics.util.ISeq;
 
-import lu.svv.theodore.hls.And;
-import lu.svv.theodore.hls.Expression;
-import lu.svv.theodore.hls.Or;
-import lu.svv.theodore.explain.DoubleBoolOp;
-import lu.svv.theodore.explain.QuantifiersOp;
-import lu.svv.theodore.explain.ExprCompare;
+//import lu.svv.theodore.hls.And;
+//import lu.svv.theodore.hls.Expression;
+//import lu.svv.theodore.hls.Or;
+//import lu.svv.theodore.explain.HlsOp;
+//import lu.svv.theodore.explain.HlsExpr;
+//import lu.svv.theodore.explain.ExprCompare;
 
 public class Explain {
 
 	// Definition of the allowed operations
 	// Ricardo> Here I think that we should have the internal nodes of our property: ForAll, And, Or, ...
-	private static final ISeq<Op<Double>> OPS = ISeq.of(MathOp.ADD, MathOp.SUB, MathOp.MUL, MathOp.DIV/*,
-			DoubleBoolOp.AND, DoubleBoolOp.OR, DoubleBoolOp.NOT, DoubleBoolOp.IMP, DoubleBoolOp.XOR, DoubleBoolOp.EQU,
-			QuantifiersOp.FORALL, QuantifiersOp.EXISTS*/
-			);
+	private static final ISeq<Op<Double>> OPS = ISeq.of(
+			HlsOp.ADD, HlsOp.SUB, HlsOp.MUL, HlsOp.DIV,
+			HlsOp.GT, HlsOp.GE, HlsOp.LT, HlsOp.LE, HlsOp.NE, HlsOp.EQ,
+			HlsOp.AND, HlsOp.OR, HlsOp.NOT, HlsOp.IMP, HlsOp.XOR, HlsOp.EQU,
+			HlsOp.FORALL, HlsOp.EXISTS
+	);
 
 	// Definition of terminals
 	// Ricardo> Here I think that we should have the internal nodes of our property: Consts, Vars, ...
@@ -85,21 +84,23 @@ public class Explain {
 	 */
 //	public static Explain of(/*Expression expression*/) {
 	public static Explain of(String baseFormula, Double expected_result) {
-		final MathExpr expr = MathExpr.parse(baseFormula);
+		final HlsExpr expr = HlsExpr.parse(baseFormula);
 		Tree<Op<Double>, ?> seedExpression = expr.tree();
+		EXPR = baseFormula;
+		System.out.println("Seed Expr:    " + new HlsExpr(expr.tree()));
 
 		return new Explain(seedExpression, expected_result);
 	}
-	
-	static String EXPR = "x+2-5";
+
+	static String EXPR = "x>5";
 
 	private static EvolutionStart<ProgramGene<Double>, Double>
 	start(final int populationSize, final long generation) {
 		Genotype<ProgramGene<Double>> genotype1 = Genotype.of(
-				ProgramChromosome.of(MathExpr.parse(EXPR).tree(), ch -> ch.root().size() <= 50, OPS, TMS)
+				ProgramChromosome.of(HlsExpr.parse(EXPR).tree(), ch -> ch.root().size() <= 50, OPS, TMS)
 		 );
 		Genotype<ProgramGene<Double>> genotype2 = Genotype.of(
-				ProgramChromosome.of(MathExpr.parse(EXPR).tree(), ch -> ch.root().size() <= 50, OPS, TMS)
+				ProgramChromosome.of(HlsExpr.parse(EXPR).tree(), ch -> ch.root().size() <= 50, OPS, TMS)
 		 );
 
 		Phenotype<ProgramGene<Double>, Double> phenotype1 = Phenotype.of(genotype1, generation, 10.0);
@@ -148,16 +149,16 @@ public class Explain {
 		        .gene();
 
 	    TreeNode<Op<Double>> tree = program1.toTreeNode();
-	    MathExpr.rewrite(tree); // Simplify result program.
+	    HlsExpr.rewrite(tree); // Simplify result program.
 	    System.out.println("Generations: " + result.totalGenerations());
 	    System.out.println("Population: " + result.population());
-	    System.out.println("Function:    " + new MathExpr(tree));
+	    System.out.println("Function:    " + new HlsExpr(tree));
 	
 	    tree = program2.toTreeNode();
-	    MathExpr.rewrite(tree); // Simplify result program.
+	    HlsExpr.rewrite(tree); // Simplify result program.
 	    System.out.println("Generations: " + result.totalGenerations());
 	    System.out.println("Population: " + result.population());
-	    System.out.println("Function:    " + new MathExpr(tree));
+	    System.out.println("Function:    " + new HlsExpr(tree));
 	    
 	    final Error<Double> error = Error.of(
 	    	    LossFunction::mse,
