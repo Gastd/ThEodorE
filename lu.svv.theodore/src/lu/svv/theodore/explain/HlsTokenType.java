@@ -22,17 +22,23 @@ enum HlsTokenType implements Token.Type {
 	MINUS(9),
 	TIMES(10),
 	DIV(11),
-	POW(12),
-	AND(13),
-	OR(14),
-	IMP(15),
-	XOR(16),
-	EQU(17),
-	FORALL(18),
-	EXISTS(19),
+	GT(12),
+	GE(13),
+	LT(14),
+	LE(15),
+	NE(16),
+	EQ(17),
+	POW(18),
+	AND(19),
+	OR(20),
+	IMP(21),
+	XOR(22),
+	EQU(23),
+	FORALL(24),
+	EXISTS(25),
 
-	NUMBER(20),
-	IDENTIFIER(21);
+	NUMBER(26),
+	IDENTIFIER(27);
 
 	private final int _code;
 

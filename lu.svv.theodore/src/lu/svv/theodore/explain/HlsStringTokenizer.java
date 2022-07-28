@@ -14,6 +14,14 @@ import static lu.svv.theodore.explain.HlsTokenType.PLUS;
 import static lu.svv.theodore.explain.HlsTokenType.POW;
 import static lu.svv.theodore.explain.HlsTokenType.RPAREN;
 import static lu.svv.theodore.explain.HlsTokenType.TIMES;
+import static lu.svv.theodore.explain.HlsTokenType.GE;
+import static lu.svv.theodore.explain.HlsTokenType.GT;
+import static lu.svv.theodore.explain.HlsTokenType.LT;
+import static lu.svv.theodore.explain.HlsTokenType.LE;
+import static lu.svv.theodore.explain.HlsTokenType.NE;
+import static lu.svv.theodore.explain.HlsTokenType.EQ;
+import static lu.svv.theodore.explain.HlsTokenType.FORALL;
+import static lu.svv.theodore.explain.HlsTokenType.EXISTS;
 
 import io.jenetics.ext.internal.parser.CharSequenceTokenizer;
 import io.jenetics.ext.internal.parser.ParsingException;
@@ -82,6 +90,62 @@ final class HlsStringTokenizer extends CharSequenceTokenizer {
 				case '/':
 					consume();
 					return DIV.token(value);
+				case '>':
+					if (LA(2) == '=') {
+						consume();
+						consume();
+						return GE.token(">=");
+					} else {
+						consume();
+						return GT.token(value);
+					}
+				case '<':
+					if (LA(2) == '=') {
+						consume();
+						consume();
+						return LE.token("<=");
+					} else {
+						consume();
+						return LT.token(value);
+					}
+				case '!':
+					if (LA(2) == '=') {
+						consume();
+						consume();
+						return NE.token("!=");
+					} else {
+						throw new ParsingException(format(
+							"Got invalid character '%s' at position '%d'.",
+							c, pos
+						));
+					}
+				case '=':
+					if (LA(2) == '=') {
+						consume();
+						consume();
+						return EQ.token("==");
+					} else {
+						throw new ParsingException(format(
+							"Got invalid character '%s' at position '%d'.",
+							c, pos
+						));
+					}
+				case 'F':
+					if (LA(2) == 'o') {
+						consume();
+						consume();
+						consume();
+						consume();
+						consume();
+						consume();
+						System.out.println(FORALL.token("ForAll"));
+						return FORALL.token("ForAll");
+					} else {
+						throw new ParsingException(format(
+							"Got invalid character '%s' at position '%d'.",
+							c, pos
+						));
+					}
 				case '^':
 					consume();
 					return POW.token(value);
