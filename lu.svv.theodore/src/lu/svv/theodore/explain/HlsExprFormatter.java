@@ -21,14 +21,18 @@ final class HlsExprFormatter {
 		Map.entry(HlsOp.SUB, " - "),
 		Map.entry(HlsOp.MUL, "*"),
 		Map.entry(HlsOp.DIV, "/"),
-		Map.entry(HlsOp.AND, "and"),
-		Map.entry(HlsOp.OR, "or"),
-		Map.entry(HlsOp.NOT, "not"),
-		Map.entry(HlsOp.IMP, "->"),
-		Map.entry(HlsOp.XOR, "xor"),
-		Map.entry(HlsOp.EQU, "=="),
-		Map.entry(HlsOp.FORALL, "ForAll"),
-		Map.entry(HlsOp.EXISTS, "Existis")
+		Map.entry(HlsOp.GT, ">"),
+		Map.entry(HlsOp.GE, ">="),
+		Map.entry(HlsOp.LT, "<"),
+		Map.entry(HlsOp.LE, "<="),
+		Map.entry(HlsOp.AND, " and "),
+		Map.entry(HlsOp.OR, " or "),
+		Map.entry(HlsOp.NOT, " not "),
+		Map.entry(HlsOp.IMP, " -> "),
+		Map.entry(HlsOp.XOR, " xor "),
+		Map.entry(HlsOp.EQU, " == "),
+		Map.entry(HlsOp.FORALL, " ForAll "),
+		Map.entry(HlsOp.EXISTS, " Existis ")
 	);
 
 	private static final Map<Op<Double>, Integer> PRECEDENCE = Map.ofEntries(
@@ -36,14 +40,19 @@ final class HlsExprFormatter {
 		Map.entry(HlsOp.SUB, 6),
 		Map.entry(HlsOp.MUL, 5),
 		Map.entry(HlsOp.DIV, 5),
+		Map.entry(HlsOp.GT,  5),
+		Map.entry(HlsOp.GE,  5),
+		Map.entry(HlsOp.LT,  6),
+		Map.entry(HlsOp.LE,  4),
+		Map.entry(HlsOp.EQ,  4),
 		Map.entry(HlsOp.AND, 6),
-		Map.entry(HlsOp.OR, 6),
-		Map.entry(HlsOp.NOT, 9),
-		Map.entry(HlsOp.IMP, 9),
-		Map.entry(HlsOp.XOR, 9),
-		Map.entry(HlsOp.EQU, 9),
-		Map.entry(HlsOp.FORALL, 9),
-		Map.entry(HlsOp.EXISTS, 9)
+		Map.entry(HlsOp.OR,  6),
+		Map.entry(HlsOp.NOT, 5),
+		Map.entry(HlsOp.IMP, 5),
+		Map.entry(HlsOp.XOR, 6),
+		Map.entry(HlsOp.EQU, 5),
+		Map.entry(HlsOp.FORALL, 4),
+		Map.entry(HlsOp.EXISTS, 4)
 	);
 
 	static String format(final Tree<? extends Op<Double>, ?> tree) {
